@@ -27,6 +27,14 @@ if TYPE_CHECKING:
 
 
 __version__ = "0.0.1"
+__all__ = (
+    "BlockedError",
+    "EvalBlockedError",
+    "ExecBlockedError",
+    "Safe",
+    "allow_eval",
+    "allow_exec",
+)
 
 BuiltinReturnT = TypeVar("BuiltinReturnT", None, Any)
 ReturnT_co = TypeVar("ReturnT_co", covariant=True)
