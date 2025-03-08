@@ -13,7 +13,13 @@ This is useful for retrieving deobfuscated code from obfuscated malware samples 
 pip install safe-exec
 ```
 
-Only Python 3.9 is currently supported.
+Or install from source:
+
+```shell
+pip install git+https://github.com/lemonyte/safe-exec.git
+```
+
+Python versions 3.9 through 3.13 are supported.
 
 ## Example
 

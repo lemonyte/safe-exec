@@ -28,17 +28,18 @@ KNOWN_CALLERS = {
         importlib._bootstrap._call_with_frames_removed.__code__,  # type: ignore[reportAttributeAccessIssue]
         site.addpackage.__code__,
         runpy._run_code.__code__,  # type: ignore[reportAttributeAccessIssue]
-        dataclasses._create_fn.__code__,  # type: ignore[reportAttributeAccessIssue]
     },
     "eval": {
         collections.namedtuple.__code__,
         typing.ForwardRef._evaluate.__code__,
-        # logging.config._install_handlers.__code__,  # type: ignore[reportAttributeAccessIssue]
     },
 }
+if sys.version_info >= (3, 13):
+    KNOWN_CALLERS["exec"].add(dataclasses._FuncBuilder.add_fns_to_class.__code__)  # type: ignore[reportAttributeAccessIssue]
+else:
+    KNOWN_CALLERS["exec"].add(dataclasses._create_fn.__code__)  # type: ignore[reportAttributeAccessIssue]
 
 logger = logging.getLogger(__name__)
-
 original_exec = builtins.exec
 original_eval = builtins.eval
 
