@@ -9,59 +9,31 @@ This is useful for retrieving deobfuscated code from obfuscated malware samples 
 
 ## Installation
 
-> [!IMPORTANT]
-> You **must** install `safe-exec` into an activated virtual environment for it to work properly.
-
 ```shell
 pip install safe-exec
 ```
 
-Verify that `safe-exec` is installed correctly and will execute when Python starts:
-
-```shell
-python -c 'exec("print(\"if this prints normally, safe-exec is NOT installed\")")'
-```
-
-```text
-Traceback (most recent call last):
-  File "<string>", line 1, in <module>
-  File "/.../site-packages/safe_exec/__init__.py", line 75, in safe_exec
-    raise ExecBlockedError(caller=caller, source=source, globals=globals, locals=locals)
-safe_exec.ExecBlockedError: blocked execution of 'print("if this prints normally, safe-exec is NOT installed")'
-```
-
-If the exception is thrown, `safe-exec` is installed correctly.
-
-If the exception is **not** thrown, try the following:
-
-1. Run `SITE_PACKAGES=$(python -c 'import sysconfig; print(sysconfig.get_path("purelib"))')` to get the path to the Python site-packages directory.
-2. Run `echo "import safe_exec" > "$SITE_PACKAGES/safe_exec.pth"` to register `safe-exec` on startup.
-
-> [!NOTE]
-> If using PowerShell, use `$SITE_PACKAGES` instead of `SITE_PACKAGES` to assign the variable.
+Only Python 3.9 is currently supported.
 
 ## Example
 
-When `safe-exec` is installed, `exec` calls will raise an `ExecBlockedError` exception:
+The `Safe` context manager takes either `exec` or `eval` as an argument.
 
 ```python
-from base64 import b64decode
-from safe_exec import ExecBlockedError
+>>> from safe_exec import Safe
+>>> with Safe(exec):
+...     from base64 import b64decode
+...     exec(b64decode("cHJpbnQoJ29iZnVzY2F0ZWQgY29kZScp"))
 
-try:
-    exec(b64decode("cHJpbnQoJ29iZnVzY2F0ZWQgY29kZScp"))
-except ExecBlockedError as exc:
-    print(f"Blocked code: {exc.source!r}")
-    print(f"Globals: {exc.globals}")
-    print(f"Locals: {exc.locals}")
-    print(f"Caller: {exc.caller}")
+safe_exec.ExecBlockedError: blocked execution of b"print('obfuscated code')"
 ```
 
-```text
-Blocked code: b"print('obfuscated code')"
-Globals: None
-Locals: None
-Caller: <module>
+You can also use the `runpy` module to execute a different script in the `Safe` context:
+
+```python
+>>> import runpy
+>>> with Safe(exec), Safe(eval):
+...     runpy.run_path("path/to/script.py")
 ```
 
 ## False positives
@@ -71,7 +43,14 @@ Because `exec` and `eval` are used in a number of places within the Python stand
 Legitimate calls to `exec` and `eval` are allowed by inspecting the caller's frame. If the caller's code object is present in the list of allowed callers, the call is allowed. Such calls are logged as informational messages.
 
 ```python
+>>> from safe_exec import Safe
+>>> import logging
+>>> logging.basicConfig(level=logging.INFO)
+>>> from typing import NamedTuple
+>>> with Safe(eval):
+...     NamedTuple("Foo", [("bar", int)])
 
+INFO:safe_exec:allowed eval call by 'namedtuple' from '.../lib/collections/__init__.py':345
 ```
 
 ## License
