@@ -13,7 +13,7 @@ import site
 import sys
 import typing
 from contextlib import ContextDecorator
-from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, TypeVar
 
 if sys.version_info >= (3, 10):
     from typing import ParamSpec
@@ -22,7 +22,7 @@ else:
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from types import CodeType, TracebackType
+    from types import CellType, CodeType, TracebackType
 
     from _typeshed import ReadableBuffer
 
@@ -37,7 +37,6 @@ __all__ = (
     "safe",
 )
 
-BuiltinReturnT = TypeVar("BuiltinReturnT", None, Any)
 ReturnT_co = TypeVar("ReturnT_co", covariant=True)
 ParamT = ParamSpec("ParamT")
 
@@ -94,10 +93,10 @@ class AllowContextDecorator(abc.ABC, Generic[ParamT, ReturnT_co]):
         self._func = func
         self._register(func)
 
-    def _register(self, func: Callable, /) -> None:
+    def _register(self, func: Callable[..., Any], /) -> None:
         TRUSTED_CALLERS[self._builtin_name].add(func.__code__)
 
-    def _unregister(self, func: Callable, /) -> None:
+    def _unregister(self, func: Callable[..., Any], /) -> None:
         TRUSTED_CALLERS[self._builtin_name].remove(func.__code__)
 
     def __call__(self, *args: ParamT.args, **kwargs: ParamT.kwargs) -> ReturnT_co:
@@ -136,20 +135,76 @@ class allow_eval(AllowContextDecorator[ParamT, ReturnT_co]):
         return "eval"
 
 
-class safe(ContextDecorator, Generic[BuiltinReturnT]):
+class ExecType(Protocol):
+    __name__: str
+
+    if sys.version_info >= (3, 13):
+
+        def __call__(
+            self,
+            source: str | ReadableBuffer | CodeType,
+            /,
+            globals: dict[str, Any] | None,
+            locals: Mapping[str, object] | None,
+            *,
+            closure: tuple[CellType, ...] | None = None,
+        ) -> None: ...
+    elif sys.version_info >= (3, 11):
+
+        def __call__(
+            self,
+            source: str | ReadableBuffer | CodeType,
+            globals: dict[str, Any] | None,
+            locals: Mapping[str, object] | None,
+            /,
+            *,
+            closure: tuple[CellType, ...] | None = None,
+        ) -> None: ...
+    else:
+
+        def __call__(
+            self,
+            source: str | ReadableBuffer | CodeType,
+            globals: dict[str, Any] | None,
+            locals: Mapping[str, object] | None,
+            /,
+        ) -> None: ...
+
+
+class EvalType(Protocol):
+    __name__: str
+
+    if sys.version_info >= (3, 13):
+
+        def __call__(
+            self,
+            source: str | ReadableBuffer | CodeType,
+            /,
+            globals: dict[str, Any] | None,
+            locals: Mapping[str, object] | None,
+        ) -> Any: ...  # noqa: ANN401
+    else:
+
+        def __call__(
+            self,
+            source: str | ReadableBuffer | CodeType,
+            globals: dict[str, Any] | None,
+            locals: Mapping[str, object] | None,
+            /,
+        ) -> Any: ...  # noqa: ANN401
+
+
+class safe(ContextDecorator):
     def __init__(
         self,
-        func: Callable[
-            [str | ReadableBuffer | CodeType, dict[str, Any] | None, Mapping[str, object] | None],
-            BuiltinReturnT,
-        ],
+        func: ExecType | EvalType,
         /,
     ) -> None:
         self._already_wrapped = False
         if isinstance(getattr(func, "__self__", None), self.__class__):
             self._already_wrapped = True
             func = func.__self__._bare_func  # type: ignore[reportFunctionMemberAccess]
-        elif func not in {original_exec, original_eval}:
+        elif func not in (original_exec, original_eval):
             msg = f"unsupported function {func!r}"
             raise ValueError(msg)
         self._bare_func = func
@@ -159,9 +214,12 @@ class safe(ContextDecorator, Generic[BuiltinReturnT]):
     def _safe_func(
         self,
         source: str | ReadableBuffer | CodeType,
+        /,
         globals: dict[str, Any] | None = None,
         locals: Mapping[str, object] | None = None,
-    ) -> BuiltinReturnT:
+        *,
+        closure: tuple[CellType, ...] | None = None,
+    ) -> Any | None:  # noqa: ANN401
         caller = sys._getframe(1).f_code
         if caller in self._known_callers:
             logger.info(
@@ -171,6 +229,8 @@ class safe(ContextDecorator, Generic[BuiltinReturnT]):
                 caller.co_filename,
                 caller.co_firstlineno,
             )
+            if sys.version_info >= (3, 11) and self._bare_func is original_exec:
+                return self._bare_func(source, globals, locals, closure=closure)  # type: ignore[reportCallIssue]
             return self._bare_func(source, globals, locals)
         raise self._exc_cls(caller=caller, source=source, globals=globals, locals=locals)
 
