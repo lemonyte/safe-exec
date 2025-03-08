@@ -12,6 +12,7 @@ import runpy
 import site
 import sys
 import typing
+from contextlib import ContextDecorator
 from typing import TYPE_CHECKING, Any, Callable, Generic, TypeVar
 
 if sys.version_info >= (3, 10):
@@ -31,9 +32,9 @@ __all__ = (
     "BlockedError",
     "EvalBlockedError",
     "ExecBlockedError",
-    "Safe",
     "allow_eval",
     "allow_exec",
+    "safe",
 )
 
 BuiltinReturnT = TypeVar("BuiltinReturnT", None, Any)
@@ -135,7 +136,7 @@ class allow_eval(AllowContextDecorator[ParamT, ReturnT_co]):
         return "eval"
 
 
-class Safe(Generic[BuiltinReturnT]):
+class safe(ContextDecorator, Generic[BuiltinReturnT]):
     def __init__(
         self,
         func: Callable[
@@ -145,17 +146,17 @@ class Safe(Generic[BuiltinReturnT]):
         /,
     ) -> None:
         self._already_wrapped = False
-        if isinstance(func, self.__class__):
+        if isinstance(getattr(func, "__self__", None), self.__class__):
             self._already_wrapped = True
-            func = func._func
+            func = func.__self__._bare_func  # type: ignore[reportFunctionMemberAccess]
         elif func not in {original_exec, original_eval}:
             msg = f"unsupported function {func!r}"
             raise ValueError(msg)
-        self._func = func
+        self._bare_func = func
         self._known_callers = KNOWN_CALLERS[func.__name__]
         self._exc_cls = BLOCK_EXC_CLS[func.__name__]
 
-    def __call__(
+    def _safe_func(
         self,
         source: str | ReadableBuffer | CodeType,
         globals: dict[str, Any] | None = None,
@@ -165,17 +166,17 @@ class Safe(Generic[BuiltinReturnT]):
         if caller in self._known_callers:
             logger.info(
                 "allowed %s call by %r from %r:%i",
-                self._func.__name__,
+                self._bare_func.__name__,
                 caller.co_name,
                 caller.co_filename,
                 caller.co_firstlineno,
             )
-            return self._func(source, globals, locals)
+            return self._bare_func(source, globals, locals)
         raise self._exc_cls(caller=caller, source=source, globals=globals, locals=locals)
 
     def __enter__(self) -> None:
         if not self._already_wrapped:
-            builtins.__dict__[self._func.__name__] = self
+            builtins.__dict__[self._bare_func.__name__] = self._safe_func
 
     def __exit__(
         self,
@@ -184,4 +185,4 @@ class Safe(Generic[BuiltinReturnT]):
         traceback: TracebackType | None,
     ) -> None:
         if not self._already_wrapped:
-            builtins.__dict__[self._func.__name__] = self._func
+            builtins.__dict__[self._bare_func.__name__] = self._bare_func

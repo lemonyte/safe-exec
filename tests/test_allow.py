@@ -1,6 +1,6 @@
 import pytest
 
-from safe_exec import EvalBlockedError, ExecBlockedError, Safe, allow_eval, allow_exec
+from safe_exec import EvalBlockedError, ExecBlockedError, allow_eval, allow_exec, safe
 
 
 def run_exec() -> bool:
@@ -46,34 +46,36 @@ def allowed_both() -> tuple[bool, int]:
     return True, eval("0 + 1")
 
 
+@safe(exec)
 def test_allowed_exec() -> None:
-    with Safe(exec):
-        assert allowed_exec()
-        with allow_exec(run_exec) as f:
-            assert f is run_exec
-            assert run_exec()
-            assert disallowed_exec()
-        with pytest.raises(ExecBlockedError):
-            assert run_exec()
-        with pytest.raises(ExecBlockedError):
-            assert disallowed_exec()
+    assert allowed_exec()
+    with allow_exec(run_exec) as f:
+        assert f is run_exec
+        assert run_exec()
+        assert disallowed_exec()
+    with pytest.raises(ExecBlockedError):
+        assert run_exec()
+    with pytest.raises(ExecBlockedError):
+        assert disallowed_exec()
 
 
+@safe(eval)
 def test_allowed_eval() -> None:
-    with Safe(eval):
-        assert allowed_eval() == 1
-        with allow_eval(run_eval) as f:
-            assert f is run_eval
-            assert run_eval() == 1
-            assert disallowed_eval() == 1
-        with pytest.raises(EvalBlockedError):
-            assert run_eval() == 1
-        with pytest.raises(EvalBlockedError):
-            assert disallowed_eval() == 1
+    assert allowed_eval() == 1
+    with allow_eval(run_eval) as f:
+        assert f is run_eval
+        assert run_eval() == 1
+        assert disallowed_eval() == 1
+    with pytest.raises(EvalBlockedError):
+        assert run_eval() == 1
+    with pytest.raises(EvalBlockedError):
+        assert disallowed_eval() == 1
 
 
+@safe(exec)
+@safe(eval)
 def test_allowed_both() -> None:
-    with Safe(exec), Safe(eval):
+    with safe(exec), safe(eval):
         assert allowed_both() == (True, 1)
         with allow_exec(run_exec) as f1, allow_eval(run_eval) as f2:
             assert f1 is run_exec
@@ -90,7 +92,7 @@ def test_allowed_both() -> None:
 
 
 def test_allowed_wrong_func() -> None:
-    with Safe(exec), allow_eval(run_exec), pytest.raises(ExecBlockedError):
+    with safe(exec), allow_eval(run_exec), pytest.raises(ExecBlockedError):
         assert run_exec()
-    with Safe(eval), allow_exec(run_eval), pytest.raises(EvalBlockedError):
+    with safe(eval), allow_exec(run_eval), pytest.raises(EvalBlockedError):
         assert run_eval() == 1
