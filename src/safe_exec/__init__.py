@@ -71,14 +71,6 @@ class EvalBlockedError(BlockedError):
 BLOCK_EXC_CLS = {"exec": ExecBlockedError, "eval": EvalBlockedError}
 
 
-def wrap_builtin(builtin: Callable, /) -> Callable[[Callable], Callable]:
-    def decorator(func: Callable, /) -> Callable:
-        builtins.__dict__[builtin.__name__] = func
-        return func
-
-    return decorator
-
-
 class Safe(Generic[ReturnT]):
     def __init__(
         self,
