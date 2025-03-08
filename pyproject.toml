@@ -1,0 +1,31 @@
+[project]
+name = "safe-exec"
+dynamic = ["version"]
+description = "Inspect code passed into exec() and eval()"
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+authors = [{ name = "Lemonyte", email = "contact@lemonyte.com" }]
+requires-python = ">=3.9"
+
+[project.urls]
+Repository = "https://github.com/lemonyte/safe-exec"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = { attr = "safe_exec.__version__" }
+
+[tool.ruff]
+src = ["src"]
+line-length = 119
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["A", "D"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
