@@ -41,7 +41,7 @@ BuiltinReturnT = TypeVar("BuiltinReturnT", None, Any)
 ReturnT_co = TypeVar("ReturnT_co", covariant=True)
 ParamT = ParamSpec("ParamT")
 
-KNOWN_CALLERS = {
+TRUSTED_CALLERS: dict[str, set[CodeType]] = {
     "exec": {
         importlib._bootstrap._call_with_frames_removed.__code__,  # type: ignore[reportAttributeAccessIssue]
         site.addpackage.__code__,
@@ -53,9 +53,9 @@ KNOWN_CALLERS = {
     },
 }
 if sys.version_info >= (3, 13):
-    KNOWN_CALLERS["exec"].add(dataclasses._FuncBuilder.add_fns_to_class.__code__)  # type: ignore[reportAttributeAccessIssue]
+    TRUSTED_CALLERS["exec"].add(dataclasses._FuncBuilder.add_fns_to_class.__code__)  # type: ignore[reportAttributeAccessIssue]
 else:
-    KNOWN_CALLERS["exec"].add(dataclasses._create_fn.__code__)  # type: ignore[reportAttributeAccessIssue]
+    TRUSTED_CALLERS["exec"].add(dataclasses._create_fn.__code__)  # type: ignore[reportAttributeAccessIssue]
 
 logger = logging.getLogger(__name__)
 original_exec = builtins.exec
@@ -95,10 +95,10 @@ class AllowContextDecorator(abc.ABC, Generic[ParamT, ReturnT_co]):
         self._register(func)
 
     def _register(self, func: Callable, /) -> None:
-        KNOWN_CALLERS[self._builtin_name].add(func.__code__)
+        TRUSTED_CALLERS[self._builtin_name].add(func.__code__)
 
     def _unregister(self, func: Callable, /) -> None:
-        KNOWN_CALLERS[self._builtin_name].remove(func.__code__)
+        TRUSTED_CALLERS[self._builtin_name].remove(func.__code__)
 
     def __call__(self, *args: ParamT.args, **kwargs: ParamT.kwargs) -> ReturnT_co:
         return self._func(*args, **kwargs)
@@ -153,7 +153,7 @@ class safe(ContextDecorator, Generic[BuiltinReturnT]):
             msg = f"unsupported function {func!r}"
             raise ValueError(msg)
         self._bare_func = func
-        self._known_callers = KNOWN_CALLERS[func.__name__]
+        self._known_callers = TRUSTED_CALLERS[func.__name__]
         self._exc_cls = BLOCK_EXC_CLS[func.__name__]
 
     def _safe_func(
