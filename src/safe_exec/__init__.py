@@ -1,4 +1,6 @@
 # ruff: noqa: SLF001, PYI024, N801
+"""Context managers and helpers to deobfuscate and inspect code passed into `exec` and `eval`."""
+
 from __future__ import annotations
 
 import abc
@@ -37,9 +39,6 @@ __all__ = (
     "safe",
 )
 
-ReturnT_co = TypeVar("ReturnT_co", covariant=True)
-ParamT = ParamSpec("ParamT")
-
 TRUSTED_CALLERS: dict[str, set[CodeType]] = {
     "exec": {
         importlib._bootstrap._call_with_frames_removed.__code__,  # type: ignore[reportAttributeAccessIssue]
@@ -62,6 +61,8 @@ original_eval = builtins.eval
 
 
 class BlockedError(RuntimeError):
+    """Raised when a call to `exec` or `eval` is blocked."""
+
     def __init__(
         self,
         caller: CodeType,
@@ -70,6 +71,7 @@ class BlockedError(RuntimeError):
         locals: Mapping[str, object] | None = None,
         *args: object,
     ) -> None:
+        """Save the caller, source, globals, and locals of the attempted call."""
         super().__init__(f"blocked execution of {source!r}", *args)
         self.caller = caller
         self.source = source
@@ -78,14 +80,17 @@ class BlockedError(RuntimeError):
 
 
 class ExecBlockedError(BlockedError):
-    pass
+    """Raised when an `exec` call is blocked."""
 
 
 class EvalBlockedError(BlockedError):
-    pass
+    """Raised when an `eval` call is blocked."""
 
 
-BLOCK_EXC_CLS = {"exec": ExecBlockedError, "eval": EvalBlockedError}
+BLOCK_EXC_CLS: dict[str, type[BlockedError]] = {"exec": ExecBlockedError, "eval": EvalBlockedError}
+
+ReturnT_co = TypeVar("ReturnT_co", covariant=True)
+ParamT = ParamSpec("ParamT")
 
 
 class AllowContextDecorator(abc.ABC, Generic[ParamT, ReturnT_co]):
@@ -124,12 +129,16 @@ class AllowContextDecorator(abc.ABC, Generic[ParamT, ReturnT_co]):
 
 
 class allow_exec(AllowContextDecorator[ParamT, ReturnT_co]):
+    """Allow the provided function to call `exec`."""
+
     @property
     def _builtin_name(self) -> str:
         return "exec"
 
 
 class allow_eval(AllowContextDecorator[ParamT, ReturnT_co]):
+    """Allow the provided function to call `eval`."""
+
     @property
     def _builtin_name(self) -> str:
         return "eval"
@@ -195,16 +204,23 @@ class EvalType(Protocol):
 
 
 class safe(ContextDecorator):
+    """Context manager and decorator for blocking `exec` and `eval` calls."""
+
     def __init__(
         self,
         func: ExecType | EvalType,
         /,
     ) -> None:
+        """Initialize the context manager by passing in the built-in `exec` or `eval` function."""
         self._already_wrapped = False
         if isinstance(getattr(func, "__self__", None), self.__class__):
+            # If the passed function has already been replaced by a previous safe() context,
+            # we don't do anything.
             self._already_wrapped = True
             func = func.__self__._bare_func  # type: ignore[reportFunctionMemberAccess]
         elif func not in (original_exec, original_eval):
+            # Even with typing protocols, functions like `print` will still fit into the `func` param.
+            # We only want to replace `exec` and `eval` functions.
             msg = f"unsupported function {func!r}"
             raise ValueError(msg)
         self._bare_func = func
@@ -230,11 +246,13 @@ class safe(ContextDecorator):
                 caller.co_firstlineno,
             )
             if sys.version_info >= (3, 11) and self._bare_func is original_exec:
+                # The `closure` parameter was added to `exec` in Python 3.11.
                 return self._bare_func(source, globals, locals, closure=closure)  # type: ignore[reportCallIssue]
             return self._bare_func(source, globals, locals)
         raise self._exc_cls(caller=caller, source=source, globals=globals, locals=locals)
 
     def __enter__(self) -> None:
+        """Replace the built-in `exec` or `eval` function with the safe version."""
         if not self._already_wrapped:
             builtins.__dict__[self._bare_func.__name__] = self._safe_func
 
@@ -244,5 +262,6 @@ class safe(ContextDecorator):
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
+        """Restore the original built-in `exec` or `eval` function."""
         if not self._already_wrapped:
             builtins.__dict__[self._bare_func.__name__] = self._bare_func
