@@ -56,8 +56,8 @@ else:
     TRUSTED_CALLERS["exec"].add(dataclasses._create_fn.__code__)  # type: ignore[reportAttributeAccessIssue]
 
 logger = logging.getLogger(__name__)
-original_exec = builtins.exec
-original_eval = builtins.eval
+original_exec_id = id(builtins.exec)
+original_eval_id = id(builtins.eval)
 
 
 class BlockedError(RuntimeError):
@@ -218,7 +218,7 @@ class safe(ContextDecorator):
             # we don't do anything.
             self._already_wrapped = True
             func = func.__self__._bare_func  # type: ignore[reportFunctionMemberAccess]
-        elif func not in (original_exec, original_eval):
+        elif id(func) not in (original_exec_id, original_eval_id):
             # Even with typing protocols, functions like `print` will still fit into the `func` param.
             # We only want to replace `exec` and `eval` functions.
             msg = f"unsupported function {func!r}"
@@ -245,7 +245,7 @@ class safe(ContextDecorator):
                 caller.co_filename,
                 caller.co_firstlineno,
             )
-            if sys.version_info >= (3, 11) and self._bare_func is original_exec:
+            if sys.version_info >= (3, 11) and id(self._bare_func) == original_exec_id:
                 # The `closure` parameter was added to `exec` in Python 3.11.
                 return self._bare_func(source, globals, locals, closure=closure)  # type: ignore[reportCallIssue]
             return self._bare_func(source, globals, locals)
