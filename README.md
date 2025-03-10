@@ -51,8 +51,10 @@ from safe_exec import safe
 
 @safe(exec)
 @safe(eval)
-def untrused_func():
+def untrusted_func():
     exec("print('This is an untrusted function')")
+
+untrusted_func()
 ```
 
 And as a function to register a third-party function as an untrusted caller:
