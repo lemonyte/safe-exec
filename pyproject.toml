@@ -19,7 +19,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-data = { underscores = ["py.typed"] }
+package-data = { safe_exec = ["py.typed"] }
 
 [tool.setuptools.dynamic]
 version = { attr = "safe_exec.__version__" }
