@@ -41,13 +41,13 @@ __all__ = (
 
 TRUSTED_CALLERS: dict[str, set[CodeType]] = {
     "exec": {
-        importlib._bootstrap._call_with_frames_removed.__code__,  # type: ignore[reportAttributeAccessIssue]
+        importlib._bootstrap._call_with_frames_removed.__code__,  # type: ignore[reportAttributeAccessIssue]  # TODO: DANGEROUS
         site.addpackage.__code__,
-        runpy._run_code.__code__,  # type: ignore[reportAttributeAccessIssue]
+        runpy._run_code.__code__,  # type: ignore[reportAttributeAccessIssue]  # TODO: DANGEROUS
     },
     "eval": {
         collections.namedtuple.__code__,
-        typing.ForwardRef._evaluate.__code__,
+        # typing.ForwardRef._evaluate.__code__,  # TODO: DANGEROUS
     },
 }
 if sys.version_info >= (3, 13):
