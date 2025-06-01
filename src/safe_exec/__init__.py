@@ -9,7 +9,6 @@ import collections
 import dataclasses
 import importlib._bootstrap
 import logging
-import logging.config
 import runpy
 import site
 import sys
