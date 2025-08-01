@@ -16,7 +16,7 @@ Repository = "https://github.com/lemonyte/safe-exec"
 safe-exec = "safe_exec.__main__:main"
 
 [dependency-groups]
-dev = ["pre-commit~=4.1.0", "pytest~=8.3.5"]
+dev = ["pre-commit>=4.1,<4.3", "pytest~=8.3.5"]
 
 [build-system]
 requires = ["setuptools>=61"]
