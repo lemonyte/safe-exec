@@ -5,6 +5,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint and type check with Python ${{ matrix.python-version }}
