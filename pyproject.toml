@@ -16,7 +16,11 @@ Repository = "https://github.com/lemonyte/safe-exec"
 safe-exec = "safe_exec.__main__:main"
 
 [dependency-groups]
-dev = ["pre-commit~=4.3.0", "pytest~=8.4.2"]
+dev = [
+ "prek>=0.2.22",
+ "pytest~=8.4.2",
+ "ty>=0.0.2",
+]
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -30,6 +34,7 @@ version = { attr = "safe_exec.__version__" }
 
 [tool.ruff]
 src = ["src"]
+exclude = ["tests/scripts/**"]
 line-length = 119
 target-version = "py39"
 
@@ -39,7 +44,3 @@ ignore = ["A"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "T20", "S101", "S102", "S307"]
-
-[tool.pyright]
-venvPath = "."
-venv = ".venv"
