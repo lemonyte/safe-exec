@@ -14,12 +14,7 @@ import site
 import sys
 import typing
 from contextlib import ContextDecorator
-from typing import TYPE_CHECKING, Any, Callable, Generic, Protocol, TypeVar
-
-if sys.version_info >= (3, 10):
-    from typing import ParamSpec
-else:
-    from typing_extensions import ParamSpec
+from importlib.metadata import version
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -27,8 +22,7 @@ if TYPE_CHECKING:
 
     from _typeshed import ReadableBuffer
 
-
-__version__ = "0.0.3"
+__version__ = version("safe-exec")
 __all__ = (
     "BlockedError",
     "EvalBlockedError",

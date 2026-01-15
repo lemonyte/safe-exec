@@ -1,6 +1,6 @@
 [project]
 name = "safe-exec"
-dynamic = ["version"]
+version = "0.0.4"
 description = "Deobfuscate and inspect code passed into exec() and eval()"
 readme = "README.md"
 license = "MIT"
@@ -22,14 +22,8 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-package-data = { safe_exec = ["py.typed"] }
-
-[tool.setuptools.dynamic]
-version = { attr = "safe_exec.__version__" }
+requires = ["uv_build>=0.9.23"]
+build-backend = "uv_build"
 
 [tool.ruff]
 src = ["src"]
