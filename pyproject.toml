@@ -6,8 +6,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 authors = [{ name = "Lemonyte", email = "contact@lemonyte.com" }]
-requires-python = ">=3.9"
-dependencies = ["typing-extensions>=4.0.0;python_version<'3.10'"]
+requires-python = ">=3.10"
 
 [project.urls]
 Repository = "https://github.com/lemonyte/safe-exec"
@@ -36,7 +35,6 @@ version = { attr = "safe_exec.__version__" }
 src = ["src"]
 exclude = ["tests/scripts/**"]
 line-length = 119
-target-version = "py39"
 
 [tool.ruff.lint]
 select = ["ALL"]

@@ -19,7 +19,7 @@ Or install from source:
 pip install git+https://github.com/lemonyte/safe-exec.git
 ```
 
-Python versions 3.9 through 3.13 are supported.
+Python versions 3.10 through 3.13 are supported.
 
 ## Simple example
 
