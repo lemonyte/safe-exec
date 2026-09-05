@@ -16,7 +16,7 @@ safe-exec = "safe_exec.__main__:main"
 
 [dependency-groups]
 dev = [
-    "prek~=0.4.5",
+    "prek>=0.4.5,<0.6.0",
     "pytest~=9.1.0",
 ]
 
